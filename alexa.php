@@ -184,47 +184,52 @@
         //                API
         ////////////////////////////////////////
         
-        if(isset($_GET["API"]) && $_GET["API"] == "true"){
-            if($_GET["mode"] == "getDevices"){
-                echo json_encode($devices);
-            }
-            else if($_GET["mode"] == "sendTTS"){
-                //get values for the tts send
-                if (isset($_GET['device_name']) || isset($_POST['device_name'])){
-                    $device_name = isset($_POST['device_name'])?$_POST['device_name']:$_GET['device_name'];
-                }else{
-                    die('No Device Name (device_name) selected!');
-                }
-
-                if (isset($_GET['text_tts']) || isset($_POST['text_tts'])){
-                    $text_tts = isset($_POST['text_tts'])?$_POST['text_tts']:$_GET['text_tts'];
-                    $text_tts = str_replace(array("\r\n", "\r", "\n"), "<br />", $text_tts);
-                    $text_tts = str_replace(array("<br>", "</br>", "<br />", "\""), array(" ", " ", " ", ","), $text_tts);
-                }else{
-                    die('No Text (text_tts) selected!');
-                }
-
-                //TTS an amazon Senden
-                if (strlen($text_tts) >= 500){
-                    //split texts
-                    $parts = explode(".", $text_tts);
-                    $text_tts_small = "";
-                    for($i=0; $i < count($parts); $i += 1){
-                        if(strlen($text_tts_small) + strlen($parts[$i]) < 500){
-                            $text_tts_small .= $parts[$i].".";    //add the Dot, because that one is removed by explode
-                        }else{
-                            echo $text_tts_small."<br>";
-                            ALEXA_TTS($cookies, $devices, $device_name, $text_tts_small);
-                            sleep(5);    //alexa.amazon.de need a break of 5 seconds between 2 TTS calls
-                            $text_tts_small = $parts[$i].".";
-                        }
+        if(isset($_POST["API"]) && $_POST["API"] == "true"){
+            switch($_POST['mode']) {
+                case "getDevices":
+                    echo json_encode($devices);
+                    break;
+                case "sendTTS":
+                    //get values for the tts send
+                    if (isset($_POST['device_name']) || isset($_POST['device_name'])){
+                        $device_name = isset($_POST['device_name'])?$_POST['device_name']:$_POST['device_name'];
+                    }else{
+                        die('No Device Name (device_name) selected!');
                     }
-                    ALEXA_TTS($cookies, $devices, $device_name, $text_tts_small);    //last part
-                }else{
-                    ALEXA_TTS($cookies, $devices, $device_name, $text_tts);
-                }
+
+                    if (isset($_POST['text_tts']) || isset($_POST['text_tts'])){
+                        $text_tts = isset($_POST['text_tts'])?$_POST['text_tts']:$_POST['text_tts'];
+                        $text_tts = str_replace(array("\r\n", "\r", "\n"), "<br />", $text_tts);
+                        $text_tts = str_replace(array("<br>", "</br>", "<br />", "\""), array(" ", " ", " ", ","), $text_tts);
+                    }else{
+                        die('No Text (text_tts) selected!');
+                    }
+
+                    //TTS an amazon Senden
+                    if (strlen($text_tts) >= 500){
+                        //split texts
+                        $parts = explode(".", $text_tts);
+                        $text_tts_small = "";
+                        for($i=0; $i < count($parts); $i += 1){
+                            if(strlen($text_tts_small) + strlen($parts[$i]) < 500){
+                                $text_tts_small .= $parts[$i].".";    //add the Dot, because that one is removed by explode
+                            }else{
+                                echo $text_tts_small."<br>";
+                                ALEXA_TTS($cookies, $devices, $device_name, $text_tts_small);
+                                sleep(5);    //alexa.amazon.de need a break of 5 seconds between 2 TTS calls
+                                $text_tts_small = $parts[$i].".";
+                            }
+                        }
+                        ALEXA_TTS($cookies, $devices, $device_name, $text_tts_small);    //last part
+                    }else{
+                        ALEXA_TTS($cookies, $devices, $device_name, $text_tts);
+                    }
+                    break;
+                default:
+                    die('Invalid API-Mode specified!');
+                    break;
             }
-            if(isset($_GET["GUIAPI"]) && $_GET["GUIAPI"] == "true")
+            if(isset($_POST["GUIAPI"]) && $_POST["GUIAPI"] == "true")
                 echo '<script>window.close();</script>';
             exit();
         }
@@ -246,7 +251,7 @@
             echo "<td>".$device["DeviceFamily"]."</td>";
             echo "<td>".$device["DeviceType"]."</td>";
             echo "<td>".$device["DeviceOwnerId"]."</td>";
-            echo "<td>http://".$_SERVER['HTTP_HOST']."/".$_SERVER['SCRIPT_NAME']."?API=true&mode=sendTTS&device_name=".$device["AccountName"]."&text_tts=here you can add your text</td>";
+            echo "<td>https://".$_SERVER['HTTP_HOST'].$_SERVER['SCRIPT_NAME']."?API=true&mode=sendTTS&device_name=".$device["AccountName"]."&text_tts=here you can add your text</td>";
             echo "</tr>";
         }
         echo "</table>";
@@ -255,7 +260,7 @@
         //form for direct GUI use
         ?>
         <h3>TTS text</h3>
-        <form action="alexa.php?API=true&mode=sendTTS&GUIAPI=true" method="POST" target="_blank">
+        <form action="tts.php" method="POST" target="_blank">
         <select name="device_name" id="device_name">
             <?php
                 foreach($devices as $dev)
@@ -263,6 +268,9 @@
             ?>
         </select><br>
         <textarea name="text_tts" id="text_tts"></textarea><br>
+        <input type="hidden" name="API" value="true" />
+        <input type="hidden" name="mode" value="sendTTS" />
+        <input type="hidden" name="GUIAPI" value="true" />
         <input type="submit">
         </form>
     </body>
